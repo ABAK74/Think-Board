@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { NotePayload } from '../types/note';
+import {
+  getNoteValidationError,
+  MIN_NOTE_CONTENT_LENGTH,
+  normalizeNotePayload,
+} from '../utils/noteValidation';
 import { Loader2 } from 'lucide-react';
 
 interface NoteFormProps {
@@ -14,12 +19,16 @@ export const NoteForm: React.FC<NoteFormProps> = ({ onCreateNote, isSubmitting }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      setValidationError('Please enter both a note title and content.');
+    const payload = normalizeNotePayload({ title, content });
+    const error = getNoteValidationError(payload);
+
+    if (error) {
+      setValidationError(error);
       return;
     }
+
     setValidationError(null);
-    const success = await onCreateNote({ title, content });
+    const success = await onCreateNote(payload);
     if (success) {
       setTitle('');
       setContent('');
@@ -28,12 +37,13 @@ export const NoteForm: React.FC<NoteFormProps> = ({ onCreateNote, isSubmitting }
 
   return (
     <section aria-label="Create a new note" className="mb-10">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
           <input
             type="text"
             placeholder="Enter your note title here"
             value={title}
+            required
             onChange={(e) => {
               setTitle(e.target.value);
               if (validationError) setValidationError(null);
@@ -48,6 +58,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({ onCreateNote, isSubmitting }
             rows={4}
             placeholder="Enter your note content here"
             value={content}
+            required
+            minLength={MIN_NOTE_CONTENT_LENGTH}
             onChange={(e) => {
               setContent(e.target.value);
               if (validationError) setValidationError(null);
@@ -55,6 +67,9 @@ export const NoteForm: React.FC<NoteFormProps> = ({ onCreateNote, isSubmitting }
             disabled={isSubmitting}
             className="w-full px-3.5 py-2.5 bg-[#1e2229] border border-[#323842] rounded-md text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1] transition-colors resize-y disabled:opacity-60"
           />
+          <p className="mt-1 text-[11px] text-gray-500">
+            Minimum {MIN_NOTE_CONTENT_LENGTH} characters
+          </p>
         </div>
 
         {validationError && (

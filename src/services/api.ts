@@ -110,6 +110,44 @@ const normalizeNote = (raw: Record<string, unknown>): Note => {
 const isApiEnvelope = <T>(value: unknown): value is ApiEnvelope<T> =>
   typeof value === "object" && value !== null;
 
+const extractErrorMessage = (value: unknown, depth = 0): string | null => {
+  if (depth > 4) return null;
+
+  if (typeof value === "string") {
+    const message = value.trim();
+    return message && !message.startsWith("<") ? message : null;
+  }
+
+  if (Array.isArray(value)) {
+    const messages = value
+      .map((item) => extractErrorMessage(item, depth + 1))
+      .filter((message): message is string => Boolean(message));
+    return messages.length > 0 ? [...new Set(messages)].join(" ") : null;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const record = value as Record<string, unknown>;
+    const errorKeys = [
+      "message",
+      "error",
+      "errors",
+      "issues",
+      "fieldErrors",
+      "formErrors",
+      "response",
+    ];
+
+    for (const key of errorKeys) {
+      if (key in record) {
+        const message = extractErrorMessage(record[key], depth + 1);
+        if (message) return message;
+      }
+    }
+  }
+
+  return null;
+};
+
 const buildApiUrl = (path: string, baseUrl: string): string => {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl) || DEFAULT_API_BASE_URL;
 
@@ -123,10 +161,10 @@ const buildApiUrl = (path: string, baseUrl: string): string => {
 };
 
 const getErrorMessage = (body: unknown, status: number): string => {
-  if (isApiEnvelope<unknown>(body)) {
-    if (typeof body.error === "string" && body.error) return body.error;
-    if (typeof body.message === "string" && body.message) return body.message;
-  }
+  const serverMessage = extractErrorMessage(body);
+  if (serverMessage) return serverMessage;
+
+  if (status === 400) return "Please check the note title and content.";
 
   return `Request failed with status ${status}`;
 };

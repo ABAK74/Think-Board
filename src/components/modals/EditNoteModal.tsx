@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Note, NotePayload } from '../../types/note';
+import {
+  getNoteValidationError,
+  MIN_NOTE_CONTENT_LENGTH,
+  normalizeNotePayload,
+} from '../../utils/noteValidation';
 import { X, Loader2 } from 'lucide-react';
 
 interface EditNoteModalProps {
@@ -31,11 +36,16 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      setError('Both title and content are required.');
+    const payload = normalizeNotePayload({ title, content });
+    const validationError = getNoteValidationError(payload);
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    const success = await onSave(note.id, { title, content });
+
+    setError(null);
+    const success = await onSave(note.id, payload);
     if (success) onClose();
   };
 
@@ -59,7 +69,7 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">
               Note Title
@@ -67,7 +77,11 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (error) setError(null);
+              }}
+              required
               disabled={isSubmitting}
               className="w-full px-3.5 py-2 bg-[#14171c] border border-[#323842] rounded-md text-sm text-gray-100 focus:outline-none focus:border-[#6366f1]"
             />
@@ -80,10 +94,18 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
             <textarea
               rows={5}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                setContent(e.target.value);
+                if (error) setError(null);
+              }}
+              required
+              minLength={MIN_NOTE_CONTENT_LENGTH}
               disabled={isSubmitting}
               className="w-full px-3.5 py-2 bg-[#14171c] border border-[#323842] rounded-md text-sm text-gray-100 focus:outline-none focus:border-[#6366f1] resize-y"
             />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Minimum {MIN_NOTE_CONTENT_LENGTH} characters
+            </p>
           </div>
 
           {error && <p className="text-xs text-red-400">{error}</p>}
