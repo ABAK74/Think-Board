@@ -112,13 +112,10 @@ const isApiEnvelope = <T>(value: unknown): value is ApiEnvelope<T> =>
 
 const buildApiUrl = (path: string, baseUrl: string): string => {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl) || DEFAULT_API_BASE_URL;
-  const localHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
-  const isRunningLocally =
-    typeof window !== "undefined" && localHosts.has(window.location.hostname);
 
-  // The backend does not currently expose an Access-Control-Allow-Origin
-  // header, so local development uses the Vite same-origin proxy.
-  if (isRunningLocally && normalizedBaseUrl === DEFAULT_API_BASE_URL) {
+  // Keep requests same-origin to avoid CORS: Vite proxies locally and
+  // vercel.json applies the equivalent rewrite after deployment.
+  if (normalizedBaseUrl === DEFAULT_API_BASE_URL) {
     return path;
   }
 

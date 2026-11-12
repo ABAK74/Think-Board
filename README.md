@@ -26,6 +26,15 @@ A clean, modular, and responsive Note Management web application built with **Re
 
 The app is configured to use `https://thinkboard.codewithmmd.ir`. During local development and `vite preview`, `/api` requests pass through Vite's same-origin proxy because the backend does not currently return an `Access-Control-Allow-Origin` header. The API Settings dialog can still be used to point the app at another CORS-enabled backend.
 
+## Deploying to Vercel
+
+1. Import the GitHub repository into Vercel.
+2. Keep the detected framework preset as **Vite**.
+3. Use `npm run build` as the build command and `dist` as the output directory (Vercel normally detects both automatically).
+4. Deploy the project. No environment variables are required.
+
+The included `vercel.json` forwards `/api/*` requests to the live Think Board backend, so CRUD requests work in production without browser CORS errors.
+
 ## Project Structure
 
 ```text
