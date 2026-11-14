@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Note, NotePayload } from '../../types/note';
 import {
-  getNoteValidationError,
   MIN_NOTE_CONTENT_LENGTH,
-  normalizeNotePayload,
+  noteSchema,
 } from '../../utils/noteValidation';
 import { X, Loader2 } from 'lucide-react';
 
@@ -20,31 +21,26 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting: isFormSubmitting },
+  } = useForm<NotePayload>({
+    resolver: zodResolver(noteSchema),
+    defaultValues: { title: '', content: '' },
+  });
+  const isBusy = isSubmitting || isFormSubmitting;
 
   useEffect(() => {
     if (note) {
-      setTitle(note.title);
-      setContent(note.content);
-      setError(null);
+      reset({ title: note.title, content: note.content });
     }
-  }, [note]);
+  }, [note, reset]);
 
   if (!note) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = normalizeNotePayload({ title, content });
-    const validationError = getNoteValidationError(payload);
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setError(null);
+  const onSubmit = async (payload: NotePayload) => {
     const success = await onSave(note.id, payload);
     if (success) onClose();
   };
@@ -69,62 +65,68 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label htmlFor="edit-note-title" className="block text-xs font-medium text-gray-400 mb-1">
               Note Title
             </label>
             <input
+              id="edit-note-title"
               type="text"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (error) setError(null);
-              }}
+              {...register('title')}
               required
-              disabled={isSubmitting}
+              aria-invalid={Boolean(errors.title)}
+              aria-describedby={errors.title ? 'edit-note-title-error' : undefined}
+              disabled={isBusy}
               className="w-full px-3.5 py-2 bg-[#14171c] border border-[#323842] rounded-md text-sm text-gray-100 focus:outline-none focus:border-[#6366f1]"
             />
+            {errors.title && (
+              <p id="edit-note-title-error" role="alert" className="mt-1 text-xs text-red-400">
+                {errors.title.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label htmlFor="edit-note-content" className="block text-xs font-medium text-gray-400 mb-1">
               Note Content
             </label>
             <textarea
+              id="edit-note-content"
               rows={5}
-              value={content}
-              onChange={(e) => {
-                setContent(e.target.value);
-                if (error) setError(null);
-              }}
+              {...register('content')}
               required
               minLength={MIN_NOTE_CONTENT_LENGTH}
-              disabled={isSubmitting}
+              aria-invalid={Boolean(errors.content)}
+              aria-describedby={`edit-note-content-hint${errors.content ? ' edit-note-content-error' : ''}`}
+              disabled={isBusy}
               className="w-full px-3.5 py-2 bg-[#14171c] border border-[#323842] rounded-md text-sm text-gray-100 focus:outline-none focus:border-[#6366f1] resize-y"
             />
-            <p className="mt-1 text-[11px] text-gray-500">
+            <p id="edit-note-content-hint" className="mt-1 text-[11px] text-gray-500">
               Minimum {MIN_NOTE_CONTENT_LENGTH} characters
             </p>
+            {errors.content && (
+              <p id="edit-note-content-error" role="alert" className="mt-1 text-xs text-red-400">
+                {errors.content.message}
+              </p>
+            )}
           </div>
-
-          {error && <p className="text-xs text-red-400">{error}</p>}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isBusy}
               className="px-4 py-2 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isBusy}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#6366f1] hover:bg-[#5254e8] text-white rounded-md transition-colors disabled:opacity-60"
             >
-              {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {isBusy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save Changes
             </button>
           </div>
